@@ -12,8 +12,8 @@ import java.util.List;
  */
 public class ElasticsearchJestClient implements IElasticsearchClient {
     public ElasticsearchJestClient() {
-        RestClientBuilder.HttpClientConfigCallback
-        return client;
+//        RestClientBuilder.HttpClientConfigCallback
+//        return client;
     }
     @Override
     public void bulk(List action) {
