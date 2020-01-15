@@ -24,20 +24,21 @@ public class TransferUtils {
     private static final String ENCODING = "utf-8";
     private static final String DOT = ".";
 
-    public static void yml2Properties(String path) {
+    public static Properties yml2Properties(String content) {
         try {
             YAMLFactory yamlFactory = new YAMLFactory();
-            YAMLParser parser = yamlFactory.createParser(
-                    new InputStreamReader(new FileInputStream(path), Charset.forName(ENCODING)));
+            YAMLParser parser = yamlFactory.createParser(content);
             JsonToken token = parser.nextToken();
             PropertiesClass propertiesClass = new PropertiesClass();
             while (token != null) {
-                token = parser.nextToken();
                 testParse(token, parser, propertiesClass);
+                token = parser.nextToken();
             }
             parser.close();
-
-        } catch (Exception e) {
+            return propertiesClass.properties;
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -62,15 +63,15 @@ public class TransferUtils {
             case VALUE_NUMBER_FLOAT:
             case VALUE_TRUE:
             case VALUE_FALSE:
-                properties.key = parseValue(properties.lines, properties, parser);
-                break;
             case VALUE_NULL:
+                properties.key = parseValue(properties, parser);
                 break;
             case START_ARRAY:
                 properties.flag = "array";
                 break;
             case END_ARRAY:
                 properties.flag = "text";
+                properties.key = parseValue(properties, parser);
                 break;
             case NOT_AVAILABLE:
                 break;
@@ -81,21 +82,26 @@ public class TransferUtils {
         }
     }
 
-    private static String parseValue(List<String> lines, PropertiesClass properties, YAMLParser parser) throws IOException {
-        String value = parser.getText();
+    private static String parseValue(PropertiesClass properties, YAMLParser parser) throws IOException {
+        String text = parser.getText();
         switch (properties.flag) {
             case "text":
-                lines.add(properties.key + "=" + value);
-                properties.properties.setProperty(properties.key, value);
-                properties.key = resetKey(lines, properties.key);
+                String value = StringUtils.isNoBlank(properties.value) ? properties.value : text;
+                if (StringUtils.isNoBlank(value.trim())) {
+                    properties.lines.add(properties.key + "=" + value);
+                    properties.properties.setProperty(properties.key, value);
+                    properties.key = resetKey(properties.lines, properties.key);
+                    properties.value = "";
+                }
                 break;
             case "array":
                 if (StringUtils.isNoBlank(properties.value)) {
-                    properties.value = properties.value + "," + value;
+                    properties.value = properties.value + "," + text;
+                } else {
+                    properties.value = text;
                 }
                 break;
         }
-
         return properties.key;
     }
 
@@ -150,13 +156,21 @@ public class TransferUtils {
         List<String> lines = new LinkedList<>();
         String key;
         String value;
-        String flag;
+        String flag = "text";
         Properties properties = new Properties();
 
 
     }
 
-    public static void main(String[] args) {
-        yml2Properties("C:\\Users\\Administrator\\Desktop\\config.yml");
+    public static void main(String[] args) throws IOException {
+        String path = "C:\\Users\\joshua\\Desktop\\config.yml";
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path), Charset.forName(ENCODING)));
+        StringBuffer sb = new StringBuffer();
+        while (reader.ready()) {
+            sb.append(reader.readLine());
+            sb.append("\r\n");
+        }
+        Properties properties = yml2Properties(sb.toString());
+        System.out.println(1);
     }
 }

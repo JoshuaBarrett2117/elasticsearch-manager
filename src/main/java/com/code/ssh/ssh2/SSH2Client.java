@@ -4,11 +4,13 @@ import ch.ethz.ssh2.Connection;
 import ch.ethz.ssh2.Session;
 import ch.ethz.ssh2.StreamGobbler;
 import com.code.common.StringUtils;
+import com.code.common.TransferUtils;
 import com.code.ssh.ISSHClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.Properties;
 
 /**
  * @Description
@@ -80,11 +82,8 @@ public class SSH2Client implements ISSHClient {
 
     public static void main(String[] args) {
         SSH2Client ssh2Client = new SSH2Client("192.168.4.80", 22, "root", "liu123456");
-        String s2 = ssh2Client.sendCmd("cd /home/ku/");
-        s2 = ssh2Client.sendCmd("wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.5.1-linux-x86_64.tar.gz");
-        s2 = ssh2Client.sendCmd("tar -zxvf elasticsearch-7.5.1-linux-x86_64.tar.gz");
-        s2 = ssh2Client.sendCmd("cd elasticsearch-7.5.1-linux-x86_64");
-
-
+        String yml = ssh2Client.sendCmd("cat /home/ku/elasticsearch-6.7.1/config/elasticsearch.yml");
+        Properties properties = TransferUtils.yml2Properties(yml);
+        System.out.println(1);
     }
 }
