@@ -54,6 +54,16 @@ public class SSH2Client implements ISSHClient {
         return result;
     }
 
+    @Override
+    public void sendFile(File file) {
+
+    }
+
+    @Override
+    public File readFile(String path) {
+        return null;
+    }
+
     /**
      * @param in      输入流对象
      * @param charset 编码
@@ -81,8 +91,10 @@ public class SSH2Client implements ISSHClient {
 
 
     public static void main(String[] args) {
-        SSH2Client ssh2Client = new SSH2Client("192.168.4.80", 22, "root", "liu123456");
-        String yml = ssh2Client.sendCmd("cat /home/ku/elasticsearch-6.7.1/config/elasticsearch.yml");
+        SSH2Client ssh2Client = new SSH2Client("192.168.123.25", 22, "es", "123456");
+        String yml = ssh2Client.sendCmd("cat /home/es/elasticsearch-7.5.1/config/elasticsearch.yml");
+
+
         Properties properties = TransferUtils.yml2Properties(yml);
         System.out.println(1);
     }
