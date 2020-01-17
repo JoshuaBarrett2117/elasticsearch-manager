@@ -1,8 +1,6 @@
 package com.code.ssh.ssh2;
 
-import ch.ethz.ssh2.Connection;
-import ch.ethz.ssh2.Session;
-import ch.ethz.ssh2.StreamGobbler;
+import ch.ethz.ssh2.*;
 import com.code.common.StringUtils;
 import com.code.common.TransferUtils;
 import com.code.ssh.ISSHClient;
@@ -56,7 +54,13 @@ public class SSH2Client implements ISSHClient {
 
     @Override
     public void sendFile(File file) {
-
+        try {
+            SFTPv3Client client = new SFTPv3Client(conn);
+            SFTPv3FileHandle file1 = client.createFile(file.getName());
+            SFTPv3Client client1 = file1.getClient();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

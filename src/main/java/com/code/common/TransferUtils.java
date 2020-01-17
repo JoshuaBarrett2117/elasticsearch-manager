@@ -107,11 +107,16 @@ public class TransferUtils {
         return properties.key;
     }
 
-
     public static String properties2Yaml(String content) {
+        return properties2Yaml(content, null);
+    }
+
+    public static String properties2Yaml(String content, OutputStream out) {
         JsonParser parser = null;
         JavaPropsFactory factory = new JavaPropsFactory();
-        StringBufferOutputStream out = new StringBufferOutputStream();
+        if (out == null) {
+            out = new StringBufferOutputStream();
+        }
         try {
             parser = factory.createParser(content);
         } catch (IOException e) {
@@ -133,7 +138,11 @@ public class TransferUtils {
             new RuntimeException(e);
         }
         try {
-            return out.getContent();
+            if (out instanceof StringBufferOutputStream) {
+                return ((StringBufferOutputStream) out).getContent();
+            } else {
+                return null;
+            }
         } catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
