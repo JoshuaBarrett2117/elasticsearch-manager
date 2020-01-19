@@ -1,4 +1,4 @@
-package com.code.common;
+package com.code.common.util;
 
 /**
  * @Description
@@ -6,15 +6,15 @@ package com.code.common;
  * @Date 2020/1/14 16:22
  */
 public class StringUtils {
-    public static boolean isNoBlank(String s) {
-        if (s != null && s.length() > 0) {
+    public static boolean isNotBlank(String s) {
+        if (s != null && s.trim().length() > 0) {
             return true;
         }
         return false;
     }
 
     public static boolean isBlank(String s) {
-        if (s == null || s.length() == 0) {
+        if (s == null || s.trim().length() == 0) {
             return true;
         }
         return false;

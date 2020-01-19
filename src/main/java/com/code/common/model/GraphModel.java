@@ -1,4 +1,4 @@
-package com.code.common;
+package com.code.common.model;
 
 import java.io.Serializable;
 import java.util.Collection;

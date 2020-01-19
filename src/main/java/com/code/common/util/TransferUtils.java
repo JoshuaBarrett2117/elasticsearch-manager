@@ -1,7 +1,6 @@
-package com.code.common;
+package com.code.common.util;
 
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonStreamContext;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.dataformat.javaprop.JavaPropsFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -52,7 +51,7 @@ public class TransferUtils {
                 break;
             case FIELD_NAME:
                 String currentKey = parser.getCurrentName();
-                if (StringUtils.isNoBlank(properties.key)) {
+                if (StringUtils.isNotBlank(properties.key)) {
                     properties.pushKey(properties.key + DOT + currentKey);
                 } else {
                     properties.pushKey(currentKey);
@@ -86,8 +85,8 @@ public class TransferUtils {
         String text = parser.getText();
         switch (properties.flag) {
             case "text":
-                String value = StringUtils.isNoBlank(properties.value) ? properties.value : text;
-                if (StringUtils.isNoBlank(value.trim())) {
+                String value = StringUtils.isNotBlank(properties.value) ? properties.value : text;
+                if (StringUtils.isNotBlank(value.trim())) {
                     properties.lines.add(properties.key + "=" + value);
                     properties.properties.setProperty(properties.key, value);
                     properties.resetUpLayerKey();
@@ -97,7 +96,7 @@ public class TransferUtils {
                 }
                 break;
             case "array":
-                if (StringUtils.isNoBlank(properties.value)) {
+                if (StringUtils.isNotBlank(properties.value)) {
                     properties.value = properties.value + "," + text;
                 } else {
                     properties.value = text;
@@ -107,18 +106,17 @@ public class TransferUtils {
         return properties.key;
     }
 
-    public static String properties2Yaml(String content) {
-        return properties2Yaml(content, null);
-    }
-
-    public static String properties2Yaml(String content, OutputStream out) {
+    public static byte[] properties2Yaml(Properties properties) {
+        StringBuffer sb = new StringBuffer();
+        for (Map.Entry<Object, Object> objectObjectEntry : properties.entrySet()) {
+            sb.append(objectObjectEntry.getKey() + "=" + objectObjectEntry.getValue());
+            sb.append("\r\n");
+        }
         JsonParser parser = null;
         JavaPropsFactory factory = new JavaPropsFactory();
-        if (out == null) {
-            out = new StringBufferOutputStream();
-        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
-            parser = factory.createParser(content);
+            parser = factory.createParser(sb.toString());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -128,7 +126,7 @@ public class TransferUtils {
                     new OutputStreamWriter(out, Charset.forName(ENCODING)));
             JsonToken token = parser.nextToken();
             while (token != null) {
-                propTokenPaser(token, generator, parser);
+                propTokenParser(token, generator, parser);
                 token = parser.nextToken();
             }
             parser.close();
@@ -137,18 +135,10 @@ public class TransferUtils {
         } catch (IOException e) {
             new RuntimeException(e);
         }
-        try {
-            if (out instanceof StringBufferOutputStream) {
-                return ((StringBufferOutputStream) out).getContent();
-            } else {
-                return null;
-            }
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
+        return out.toByteArray();
     }
 
-    private static void propTokenPaser(JsonToken token, YAMLGenerator generator, JsonParser parser) throws IOException {
+    private static void propTokenParser(JsonToken token, YAMLGenerator generator, JsonParser parser) throws IOException {
         if (JsonToken.START_OBJECT.equals(token)) {
             generator.writeStartObject();
         } else if (JsonToken.FIELD_NAME.equals(token)) {
@@ -183,52 +173,6 @@ public class TransferUtils {
 
     }
 
-    public static class StringBufferOutputStream extends OutputStream {
-        private int INIT_COUNT = 1000;
-        private byte[] bytes;
-        private Integer count = 0;
-
-        public StringBufferOutputStream() {
-            this.bytes = new byte[INIT_COUNT];
-        }
-
-        public StringBufferOutputStream(int initCount) {
-            this.INIT_COUNT = initCount;
-            this.bytes = new byte[initCount];
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            synchronized (count) {
-                //满了，要扩展字节数组，每次拓展INIT_COUNT个
-                if (count == bytes.length) {
-                    byte[] bytes2 = bytes;
-                    bytes = new byte[bytes.length + INIT_COUNT];
-                    for (int i = 0; i < bytes2.length; i++) {
-                        bytes[i] = bytes2[i];
-                    }
-                }
-                bytes[count] = (byte) b;
-                count++;
-            }
-        }
-
-        private byte[] sumHex(int tu5) {
-            int maxLength = (int) Math.ceil(Math.log(tu5) / Math.log(255));
-            byte[] bytes5 = new byte[maxLength];
-            for (int i = 0; i < maxLength; i++) {
-                byte b = (byte) ((tu5 >> i) & 0xFF);
-                bytes5[i] = b;
-            }
-            return bytes5;
-        }
-
-        public String getContent() throws UnsupportedEncodingException {
-            return new String(bytes, ENCODING);
-        }
-    }
-
-
     public static void main(String[] args) throws IOException {
         String path = "C:\\Users\\joshua\\Desktop\\elasticsearch.yml";
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(path), Charset.forName(ENCODING)));
@@ -238,12 +182,8 @@ public class TransferUtils {
             sb.append("\r\n");
         }
         Properties properties = yml2Properties(sb.toString());
-        StringBuffer sb2 = new StringBuffer();
-        for (Map.Entry<Object, Object> objectObjectEntry : properties.entrySet()) {
-            sb2.append(objectObjectEntry.getKey() + "=" + objectObjectEntry.getValue());
-            sb2.append("\r\n");
-        }
-        String s = properties2Yaml(sb2.toString());
+        byte[] bytes = properties2Yaml(properties);
+        String s = new String(bytes, ENCODING);
         System.out.println(s);
     }
 

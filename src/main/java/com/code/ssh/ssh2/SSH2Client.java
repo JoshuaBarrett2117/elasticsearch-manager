@@ -1,8 +1,8 @@
 package com.code.ssh.ssh2;
 
 import ch.ethz.ssh2.*;
-import com.code.common.StringUtils;
-import com.code.common.TransferUtils;
+import com.code.common.util.StringUtils;
+import com.code.common.util.TransferUtils;
 import com.code.ssh.ISSHClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +34,7 @@ public class SSH2Client implements ISSHClient {
         }
     }
 
+
     @Override
     public String sendCmd(String cmd) {
         String result = "";
@@ -53,19 +54,92 @@ public class SSH2Client implements ISSHClient {
     }
 
     @Override
-    public void sendFile(File file) {
-        try {
-            SFTPv3Client client = new SFTPv3Client(conn);
-            SFTPv3FileHandle file1 = client.createFile(file.getName());
-            SFTPv3Client client1 = file1.getClient();
-        } catch (IOException e) {
-            e.printStackTrace();
+    public boolean isEmptyPath(String path) {
+        String temp = sendCmd("ls " + path);
+        if (StringUtils.isNotBlank(temp)) {
+            return true;
         }
+        return false;
     }
 
     @Override
-    public File readFile(String path) {
-        return null;
+    public boolean sendFile(String remoteFilePath, byte[] file) {
+        int i = remoteFilePath.lastIndexOf("/");
+        String fieldName = null;
+        String dir = null;
+        if (i < 0) {
+            throw new RuntimeException("路径不正确");
+        } else {
+            dir = remoteFilePath.substring(0, i + 1);
+            fieldName = remoteFilePath.substring(i + 1, remoteFilePath.length());
+        }
+        boolean bool = false;
+        SCPClient scpClient = null;
+        try {
+            scpClient = conn.createSCPClient();
+            SCPOutputStream outputStream = scpClient.put(fieldName, file.length, dir, null);
+            outputStream.write(file);
+            outputStream.flush();
+            outputStream.close();
+            bool = true;
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+            bool = false;
+        }
+        return bool;
+    }
+
+    @Override
+    public byte[] readFile(String path) {
+        boolean bool = false;
+        byte[] result = null;
+        try {
+            SCPClient scpClient = conn.createSCPClient();
+            SCPInputStream scpInputStream = scpClient.get(path);
+            result = input2Bytes(scpInputStream);
+            bool = true;
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+            bool = false;
+        }
+        return result;
+    }
+
+    @Override
+    public void close() {
+        conn.close();
+    }
+
+    public byte[] input2Bytes(InputStream inputStream) {
+        byte[] buffer = null;
+        ByteArrayOutputStream bos = null;
+
+        try {
+            bos = new ByteArrayOutputStream();
+            byte[] b = new byte[1024];
+            int n;
+            while ((n = inputStream.read(b)) != -1) {
+                bos.write(b, 0, n);
+            }
+            buffer = bos.toByteArray();
+        } catch (FileNotFoundException ex) {
+        } catch (IOException ex) {
+        } finally {
+            try {
+                if (null != bos) {
+                    bos.close();
+                }
+            } catch (IOException ex) {
+            } finally {
+                try {
+                    if (null != inputStream) {
+                        inputStream.close();
+                    }
+                } catch (IOException ex) {
+                }
+            }
+        }
+        return buffer;
     }
 
     /**
@@ -94,12 +168,36 @@ public class SSH2Client implements ISSHClient {
     }
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws UnsupportedEncodingException {
         SSH2Client ssh2Client = new SSH2Client("192.168.123.25", 22, "es", "123456");
-        String yml = ssh2Client.sendCmd("cat /home/es/elasticsearch-7.5.1/config/elasticsearch.yml");
+        String installPath = "/home/es/elasticsearch7";
+        String temp = ssh2Client.sendCmd("ls " + installPath);
+        if (StringUtils.isNotBlank(temp)) {
+            throw new RuntimeException("[" + installPath + "]不是一个空目录");
+        }
+        String mkResult = ssh2Client.sendCmd("mkdir " + installPath);
+        String s1 = ssh2Client.sendCmd("tar -zxvf /home/es/elasticsearch-7.5.1-linux-x86_64.tar.gz -C " + installPath);
+        if (StringUtils.isBlank(s1)) {
+            throw new RuntimeException("解压文件失败");
+        }
+        String sonPath = ssh2Client.sendCmd("ls " + installPath);
+        ssh2Client.sendCmd("mv " + installPath + "/" + sonPath.trim() + "/* " + installPath);
+        ssh2Client.sendCmd("rm " + installPath + "/" + sonPath.trim());
 
-
-        Properties properties = TransferUtils.yml2Properties(yml);
-        System.out.println(1);
+        String s = ssh2Client.sendCmd("cat " + installPath + "/config/elasticsearch.yml");
+        Properties properties = TransferUtils.yml2Properties(s);
+        properties.put("node.name", "es-master1");
+        properties.put("node.master", "true");
+        properties.put("node.data", "true");
+        properties.put("path.data", "/home/es/es-7-data");
+        properties.put("path.logs", "/home/es/es-7-logs");
+        properties.put("cluster.name", "es-7-5-1-1");
+        properties.put("cluster.initial_master_nodes", "es-master1");
+        properties.put("network.host", "0.0.0.0");
+        properties.put("http.port", "9204");
+        byte[] bytes = TransferUtils.properties2Yaml(properties);
+        boolean b = ssh2Client.sendFile(installPath + "/config/elasticsearch.yml", bytes);
+        ssh2Client.conn.close();
+        System.out.println(b);
     }
 }

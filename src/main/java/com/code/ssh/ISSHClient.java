@@ -1,7 +1,5 @@
 package com.code.ssh;
 
-import java.io.File;
-
 /**
  * @Description SSHClient
  * @Author liufei
@@ -16,7 +14,11 @@ public interface ISSHClient {
      */
     String sendCmd(String cmd);
 
-    void sendFile(File file);
+    boolean  isEmptyPath(String path);
 
-    File readFile(String path);
+    boolean sendFile(String remoteFilePath, byte[] file);
+
+    byte[] readFile(String path);
+
+    void close();
 }
